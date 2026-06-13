@@ -1,0 +1,139 @@
+---
+import Base from '../../layouts/Base.astro'
+import { marked } from 'marked'
+import {
+  supabase,
+  ARTICOLO_FIELDS,
+  STATI_VISIBILI,
+  articoloSlug,
+  dataItaliana,
+  type Articolo,
+  type Fonte,
+} from '../../lib/supabase'
+
+export async function getStaticPaths() {
+  const { data } = await supabase
+    .from('articoli')
+    .select(ARTICOLO_FIELDS)
+    .in('stato', STATI_VISIBILI)
+
+  const articoli = (data ?? []) as Articolo[]
+  return articoli.map((a) => ({ params: { slug: articoloSlug(a) }, props: { a } }))
+}
+
+const { a } = Astro.props as { a: Articolo }
+const html = a.testo_markdown ? await marked.parse(a.testo_markdown) : ''
+const fonti: Fonte[] = Array.isArray(a.fonti) ? a.fonti : []
+
+function etichettaFonte(f: Fonte): string {
+  return f.titolo ?? f.title ?? f.url ?? 'Fonte'
+}
+---
+
+<Base title={`${a.argomento} — SwipeIt Lavoro`} description={a.argomento}>
+  <article class="post">
+    <a class="back" href="/">← Tutti gli articoli</a>
+
+    <div class="post-meta">
+      <time>{dataItaliana(a.data_sessione)}</time>
+      {a.stato !== 'ACTIVE' && <span class="badge">{a.stato}</span>}
+    </div>
+
+    <h1>{a.argomento}</h1>
+
+    <div class="prose" set:html={html} />
+
+    {
+      fonti.length > 0 && (
+        <section class="fonti">
+          <h2>Fonti</h2>
+          <ul>
+            {fonti.map((f) => (
+              <li>
+                {f.url ? (
+                  <a href={f.url} target="_blank" rel="noopener">
+                    {etichettaFonte(f)}
+                  </a>
+                ) : (
+                  <span>{etichettaFonte(f)}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    <aside class="appcta" id="scarica">
+      <p>
+        <strong>Cerchi lavoro?</strong> Con <strong>SwipeIt</strong> trovi offerte
+        adatte a te scorrendole come su un'app di incontri.
+      </p>
+      <a class="cta" href="https://swipeit.it">Scopri SwipeIt</a>
+    </aside>
+  </article>
+
+  <style>
+    .post { padding-top: 0.5rem; }
+    .back { color: var(--muted); text-decoration: none; font-size: 0.9rem; }
+    .post-meta {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 1rem;
+    }
+    .badge {
+      background: #f1e9dd;
+      color: var(--rust);
+      border-radius: 999px;
+      padding: 0.1rem 0.5rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .post h1 {
+      font-size: 2rem;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin: 0.3rem 0 1.2rem;
+    }
+    .prose :global(h2) { font-size: 1.4rem; margin: 1.8rem 0 0.6rem; }
+    .prose :global(h3) { font-size: 1.15rem; margin: 1.4rem 0 0.5rem; }
+    .prose :global(p) { margin: 0 0 1rem; }
+    .prose :global(ul), .prose :global(ol) { margin: 0 0 1rem; padding-left: 1.3rem; }
+    .prose :global(li) { margin: 0.25rem 0; }
+    .prose :global(a) { color: var(--rust); text-decoration: underline; }
+    .prose :global(blockquote) {
+      margin: 1rem 0;
+      padding: 0.4rem 1rem;
+      border-left: 3px solid var(--rust);
+      color: var(--muted);
+    }
+    .fonti {
+      margin-top: 2.5rem;
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+    }
+    .fonti h2 { font-size: 1.1rem; }
+    .fonti ul { padding-left: 1.2rem; color: var(--muted); font-size: 0.95rem; }
+    .fonti a { color: var(--rust); }
+    .appcta {
+      margin-top: 2.5rem;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.2rem;
+    }
+    .appcta p { margin: 0 0 0.8rem; }
+    .appcta .cta {
+      display: inline-block;
+      text-decoration: none;
+      background: var(--rust);
+      color: #fff;
+      font-weight: 600;
+      padding: 0.55rem 1rem;
+      border-radius: 999px;
+    }
+  </style>
+</Base>
