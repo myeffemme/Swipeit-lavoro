@@ -195,12 +195,15 @@ export type Bando = {
   data_pubblicazione: string | null
   sedi: string[] | null
   figura: string | null
+  // Materiale a supporto recuperato da inPA: testo integrale + PDF ufficiale.
+  descrizione: string | null
+  allegato_url: string | null
   stato: StatoArticolo
 }
 
 export const BANDO_FIELDS =
   'id, titolo, ente, posti, codice_concorso, link, data_scadenza, ' +
-  'data_pubblicazione, sedi, figura, stato'
+  'data_pubblicazione, sedi, figura, descrizione, allegato_url, stato'
 
 // Regioni italiane + "Nazionale". `slug` = segmento URL (/pa/<slug>); `match` =
 // le stringhe (lowercase) che possono comparire nel campo `sedi` di inPA

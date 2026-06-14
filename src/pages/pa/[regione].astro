@@ -35,6 +35,7 @@ type Riga = {
   ente: string
   sede: string
   posti: number | null
+  allegato: string | null
   scadenzaFmt: string | null
   urgente: boolean
   giorniLabel: string
@@ -55,6 +56,7 @@ const righe: Riga[] = items
       ente: b.ente,
       sede: sediProvinciali(b) || info.nome,
       posti: b.posti,
+      allegato: b.allegato_url,
       scadenzaFmt: b.data_scadenza ? dataItaliana(b.data_scadenza) : null,
       urgente: giorni !== null && giorni >= 0 && giorni <= 7,
       giorniLabel,
@@ -108,14 +110,19 @@ const sezioni = PROFILI.map((p) => ({
                   )}
                 </div>
               </a>
-              {r.scadenzaFmt ? (
-                <span class={r.urgente ? 'deadline urgent' : 'deadline'}>
-                  Scade il {r.scadenzaFmt}
-                  {r.giorniLabel && <small> · {r.giorniLabel}</small>}
-                </span>
-              ) : (
-                <span class="deadline open">Candidatura aperta</span>
-              )}
+              <div class="job-foot">
+                {r.scadenzaFmt ? (
+                  <span class={r.urgente ? 'deadline urgent' : 'deadline'}>
+                    Scade il {r.scadenzaFmt}
+                    {r.giorniLabel && <small> · {r.giorniLabel}</small>}
+                  </span>
+                ) : (
+                  <span class="deadline open">Candidatura aperta</span>
+                )}
+                {r.allegato && (
+                  <a class="pdf" href={r.allegato} target="_blank" rel="noopener">📄 Scarica il bando (PDF)</a>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -182,7 +189,6 @@ const sezioni = PROFILI.map((p) => ({
     .posti { border: 1px solid var(--border); border-radius: 999px; padding: 0 0.5rem; font-size: 0.78rem; }
     .deadline {
       display: inline-block;
-      margin-top: 0.5rem;
       font-size: 0.82rem;
       font-weight: 600;
       color: var(--rust);
@@ -193,6 +199,15 @@ const sezioni = PROFILI.map((p) => ({
     .deadline small { font-weight: 400; opacity: 0.8; }
     .deadline.urgent { color: #fff; background: #c0392b; }
     .deadline.open { color: var(--muted); background: transparent; padding-left: 0; }
+    .job-foot {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem 0.9rem;
+      margin-top: 0.5rem;
+    }
+    .pdf { font-size: 0.82rem; font-weight: 600; color: var(--rust); text-decoration: none; }
+    .pdf:hover { text-decoration: underline; }
     .job:hover { border-color: var(--rust); }
   </style>
 </Base>
