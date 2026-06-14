@@ -58,6 +58,40 @@ export function articoloSlug(a: Pick<Articolo, 'id' | 'argomento'>): string {
   return base ? `${a.id}-${base}` : String(a.id)
 }
 
+// ---------------------------------------------------------------------------
+// VACANCY — offerte di lavoro delle organizzazioni internazionali (sezione /onu)
+// ---------------------------------------------------------------------------
+export type Vacancy = {
+  id: number
+  ente: string
+  sistema: string | null
+  titolo: string
+  categoria: string | null
+  tipo_contratto: string | null
+  sedi: string[] | null
+  home_based: boolean
+  valida_italia: boolean
+  data_pubblicazione: string | null
+  data_scadenza_raw: string | null
+  scadenza: string | null
+  url: string
+  fonte_url: string | null
+  stato: StatoArticolo
+}
+
+export const VACANCY_FIELDS =
+  'id, ente, sistema, titolo, categoria, tipo_contratto, sedi, home_based, ' +
+  'valida_italia, data_pubblicazione, data_scadenza_raw, scadenza, url, fonte_url, stato'
+
+// Giorni mancanti alla scadenza (negativo = passata, null = nessuna scadenza).
+export function giorniAllaScadenza(scadenza: string | null): number | null {
+  if (!scadenza) return null
+  const oggi = new Date()
+  oggi.setHours(0, 0, 0, 0)
+  const fine = new Date(scadenza + 'T00:00:00')
+  return Math.round((fine.getTime() - oggi.getTime()) / 86_400_000)
+}
+
 export function dataItaliana(d: string): string {
   try {
     return new Date(d + 'T00:00:00').toLocaleDateString('it-IT', {
