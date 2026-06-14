@@ -34,9 +34,9 @@ export type Articolo = {
 export const ARTICOLO_FIELDS =
   'id, data_sessione, argomento, slug, stato, testo_markdown, fonti, created_at'
 
-// TEST: mostriamo anche le bozze per vedere subito i contenuti.
-// PRIMA DEL LANCIO → restringere a ['ACTIVE'].
-export const STATI_VISIBILI: StatoArticolo[] = ['DRAFT', 'ACTIVE']
+// PRODUZIONE: solo articoli pubblicati. Le bozze (DRAFT) restano private,
+// bloccate anche dalla policy RLS `public read articoli` su Supabase.
+export const STATI_VISIBILI: StatoArticolo[] = ['ACTIVE']
 
 // Slugify: minuscole, niente accenti, solo a-z0-9 separati da trattino.
 function slugify(s: string): string {
