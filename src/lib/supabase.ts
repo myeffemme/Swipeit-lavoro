@@ -179,3 +179,136 @@ export function dataItaliana(d: string): string {
     return d
   }
 }
+
+// ---------------------------------------------------------------------------
+// BANDI PA — concorsi della Pubblica Amministrazione italiana (sezione /pa)
+// Fonte: inPA. Distinta dai concorsi UE/EPSO (sezione futura e separata).
+// ---------------------------------------------------------------------------
+export type Bando = {
+  id: number
+  titolo: string
+  ente: string
+  posti: number | null
+  codice_concorso: string | null
+  link: string
+  data_scadenza: string | null
+  data_pubblicazione: string | null
+  sedi: string[] | null
+  figura: string | null
+  stato: StatoArticolo
+}
+
+export const BANDO_FIELDS =
+  'id, titolo, ente, posti, codice_concorso, link, data_scadenza, ' +
+  'data_pubblicazione, sedi, figura, stato'
+
+// Regioni italiane + "Nazionale". `slug` = segmento URL (/pa/<slug>); `match` =
+// le stringhe (lowercase) che possono comparire nel campo `sedi` di inPA
+// (incluse le varianti con/senza trattino). Le sedi a livello di provincia/città
+// (es. "Milano", "Vicenza") restano nel record ma non guidano il raggruppamento:
+// quasi tutti i bandi (1694/1695) portano già il tag della regione.
+export const REGIONI = [
+  { slug: 'lombardia', nome: 'Lombardia', match: ['lombardia'] },
+  { slug: 'veneto', nome: 'Veneto', match: ['veneto'] },
+  { slug: 'emilia-romagna', nome: 'Emilia-Romagna', match: ['emilia romagna', 'emilia-romagna'] },
+  { slug: 'piemonte', nome: 'Piemonte', match: ['piemonte'] },
+  { slug: 'toscana', nome: 'Toscana', match: ['toscana'] },
+  { slug: 'lazio', nome: 'Lazio', match: ['lazio'] },
+  { slug: 'campania', nome: 'Campania', match: ['campania'] },
+  { slug: 'marche', nome: 'Marche', match: ['marche'] },
+  { slug: 'calabria', nome: 'Calabria', match: ['calabria'] },
+  { slug: 'friuli-venezia-giulia', nome: 'Friuli-Venezia Giulia', match: ['friuli venezia giulia', 'friuli-venezia giulia'] },
+  { slug: 'sicilia', nome: 'Sicilia', match: ['sicilia'] },
+  { slug: 'sardegna', nome: 'Sardegna', match: ['sardegna'] },
+  { slug: 'liguria', nome: 'Liguria', match: ['liguria'] },
+  { slug: 'puglia', nome: 'Puglia', match: ['puglia'] },
+  { slug: 'abruzzo', nome: 'Abruzzo', match: ['abruzzo'] },
+  { slug: 'umbria', nome: 'Umbria', match: ['umbria'] },
+  { slug: 'basilicata', nome: 'Basilicata', match: ['basilicata'] },
+  { slug: 'molise', nome: 'Molise', match: ['molise'] },
+  { slug: 'trentino-alto-adige', nome: 'Trentino-Alto Adige', match: ['trentino alto adige', 'trentino-alto adige', 'trentino', 'alto adige', 'bolzano', 'trento'] },
+  { slug: 'valle-aosta', nome: "Valle d'Aosta", match: ["valle d'aosta", 'valle daosta', 'aosta'] },
+  { slug: 'nazionale', nome: 'Nazionale', match: ['nazionale'] },
+] as const
+
+export type RegioneSlug = (typeof REGIONI)[number]['slug']
+
+export function regioneBySlug(slug: string) {
+  return REGIONI.find((r) => r.slug === slug) ?? null
+}
+
+// Set di tutti i nomi-regione (lowercase) per riconoscere quali voci di `sedi`
+// sono regioni e quali sono province/città.
+const NOMI_REGIONE = new Set(REGIONI.flatMap((r) => r.match))
+
+// Slug delle regioni in cui ricade un bando (può essere più di una).
+export function regioniDiBando(b: Pick<Bando, 'sedi'>): string[] {
+  const out = new Set<string>()
+  for (const s of b.sedi ?? []) {
+    const low = String(s).trim().toLowerCase()
+    for (const r of REGIONI) if (r.match.includes(low)) out.add(r.slug)
+  }
+  return [...out]
+}
+
+// Sedi a livello di provincia/città (tutto ciò che in `sedi` non è una regione).
+export function sediProvinciali(b: Pick<Bando, 'sedi'>): string {
+  return (b.sedi ?? [])
+    .filter((s) => !NOMI_REGIONE.has(String(s).trim().toLowerCase()))
+    .join(' · ')
+}
+
+// Famiglie di profilo professionale, ricavate dal campo `figura` (testo libero
+// disordinato) + il titolo. L'ordine dei controlli è una PRECEDENZA: il primo
+// che matcha vince (es. "dirigente medico" → Sanità, non Dirigenza).
+export type Profilo =
+  | 'scuola' | 'sanita' | 'polizia' | 'tecnico'
+  | 'ricerca' | 'amministrativo' | 'dirigenza' | 'altro'
+
+export const PROFILI: { key: Profilo; label: string; nota: string }[] = [
+  { key: 'scuola', label: 'Scuola e istruzione', nota: 'Docenti, insegnanti, dirigenti scolastici, personale ATA.' },
+  { key: 'sanita', label: 'Sanità', nota: 'Medici, infermieri, professioni sanitarie, dirigenti di struttura.' },
+  { key: 'ricerca', label: 'Ricerca e università', nota: 'Ricercatori, tecnologi, assegnisti, docenza universitaria.' },
+  { key: 'polizia', label: 'Polizia locale e vigilanza', nota: 'Agenti e istruttori di polizia locale, vigilanza.' },
+  { key: 'tecnico', label: 'Tecnici e ingegneria', nota: 'Istruttori e funzionari tecnici, ingegneri, geometri, informatici.' },
+  { key: 'amministrativo', label: 'Amministrativi e contabili', nota: 'Istruttori e funzionari amministrativi, contabili, segreteria.' },
+  { key: 'dirigenza', label: 'Dirigenza e direzione', nota: 'Dirigenti e direttori di area, settore o struttura.' },
+  { key: 'altro', label: 'Altri profili', nota: 'Posizioni che non rientrano nelle categorie precedenti.' },
+]
+
+export function profiloBando(b: Pick<Bando, 'figura' | 'titolo'>): Profilo {
+  const blob = `${b.figura ?? ''} ${b.titolo ?? ''}`.toLowerCase()
+  if (/docent|insegnant|dirigente scolastic|scolastic|maestr|\bata\b|educator|scuola dell|istituto comprensiv/.test(blob))
+    return 'scuola'
+  if (/infermier|\bmedic|sanitar|\boss\b|operatore socio|ostetric|fisioterap|farmacist|\bbiolog|psicolog|veterinari|assistente sociale|struttura complessa|tecnico di laboratorio|radiolog|dietist|logopedist/.test(blob))
+    return 'sanita'
+  if (/ricercator|tecnolog|assegnist|professore|dottorat|collaboratore di ricerca|borsa di ricerca|\brtd\b|\brtt\b/.test(blob))
+    return 'ricerca'
+  if (/polizia local|agente di polizia|vigilanz|\bvigile|comandante.*polizia/.test(blob))
+    return 'polizia'
+  if (/tecnic|ingegner|geometr|architett|perito|informatic|sistemist|programmator|\bgis\b|cartograf|ambient/.test(blob))
+    return 'tecnico'
+  if (/amministrativ|contabil|ragionier|segretari|economic|finanziar|\bappalt|procurement|gestion/.test(blob))
+    return 'amministrativo'
+  if (/dirigent|direttore|comandante/.test(blob))
+    return 'dirigenza'
+  return 'altro'
+}
+
+// Carica TUTTI i bandi ACTIVE (paginando: Supabase tronca a 1000 righe/query).
+export async function fetchBandiAttivi(): Promise<Bando[]> {
+  const out: Bando[] = []
+  const step = 1000
+  for (let from = 0; ; from += step) {
+    const { data, error } = await supabase
+      .from('bandi_pa')
+      .select(BANDO_FIELDS)
+      .in('stato', STATI_VISIBILI)
+      .range(from, from + step - 1)
+    if (error) throw error
+    const batch = (data ?? []) as Bando[]
+    out.push(...batch)
+    if (batch.length < step) break
+  }
+  return out
+}

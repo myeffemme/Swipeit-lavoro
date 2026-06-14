@@ -1,0 +1,122 @@
+---
+import Base from '../../layouts/Base.astro'
+import {
+  fetchBandiAttivi,
+  REGIONI,
+  regioniDiBando,
+  giorniAllaScadenza,
+} from '../../lib/supabase'
+
+const bandi = await fetchBandiAttivi()
+
+// Conteggio bandi per regione (un bando aperto in più regioni conta in ognuna).
+const counts: Record<string, number> = {}
+for (const b of bandi) {
+  for (const slug of regioniDiBando(b)) counts[slug] = (counts[slug] ?? 0) + 1
+}
+
+// Solo regioni con almeno un bando, ordinate per numero decrescente.
+const schede = REGIONI.map((r) => ({ ...r, n: counts[r.slug] ?? 0 }))
+  .filter((r) => r.n > 0)
+  .sort((a, b) => b.n - a.n)
+
+const totale = bandi.length
+const inScadenza = bandi.filter((b) => {
+  const g = giorniAllaScadenza(b.data_scadenza)
+  return g !== null && g >= 0 && g <= 7
+}).length
+---
+
+<Base
+  title="Concorsi pubblici in Italia, per regione — My Italian Job"
+  description="Tutti i concorsi della Pubblica Amministrazione italiana da inPA, divisi per regione e profilo professionale. Aggiornati ogni giorno."
+>
+  <section class="hero">
+    <h1>Concorsi pubblici in Italia</h1>
+    <p class="lead">
+      Tutti i bandi della Pubblica Amministrazione pubblicati sul Portale unico
+      del reclutamento (inPA), divisi per regione e per profilo professionale.
+      Aggiornati ogni notte.
+    </p>
+    {inScadenza > 0 && (
+      <p class="scad-note">⏳ {inScadenza} bandi in scadenza nei prossimi 7 giorni.</p>
+    )}
+  </section>
+
+  <ul class="regs">
+    {
+      schede.map((r) => (
+        <li>
+          <a class="reg" href={`/pa/${r.slug}`}>
+            <span class="reg-name">{r.nome}</span>
+            <span class="reg-count">{r.n}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <p class="muted total">
+    {totale} concorsi aperti in totale · candidature sul portale ufficiale inPA.
+  </p>
+  <p class="muted small">
+    Cerchi posizioni nelle istituzioni europee? La sezione dedicata ai concorsi
+    UE arriverà presto, separata da quella della PA italiana.
+  </p>
+
+  <style>
+    .hero { padding: 1.5rem 0 0.5rem; }
+    .hero h1 { font-size: 2rem; line-height: 1.15; letter-spacing: -0.02em; margin: 0.2rem 0 0.6rem; }
+    .lead { color: var(--muted); font-size: 1.05rem; margin: 0; }
+    .scad-note {
+      margin: 0.8rem 0 0;
+      display: inline-block;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--rust);
+      background: #f1e9dd;
+      border-radius: 999px;
+      padding: 0.2rem 0.7rem;
+    }
+
+    .regs {
+      list-style: none;
+      padding: 0;
+      margin: 1.6rem 0 1rem;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.7rem;
+    }
+    .reg {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      text-decoration: none;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .reg:hover { border-color: var(--rust); transform: translateY(-2px); }
+    .reg-name { font-weight: 700; letter-spacing: -0.01em; font-size: 1rem; }
+    .reg-count {
+      margin-left: auto;
+      background: #f1e9dd;
+      color: var(--rust);
+      border-radius: 999px;
+      padding: 0.05rem 0.55rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+    .total { font-size: 0.9rem; margin-top: 0.6rem; }
+    .small { font-size: 0.85rem; margin-top: 0.2rem; }
+
+    @media (max-width: 620px) {
+      .regs { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 380px) {
+      .regs { grid-template-columns: 1fr; }
+    }
+  </style>
+</Base>

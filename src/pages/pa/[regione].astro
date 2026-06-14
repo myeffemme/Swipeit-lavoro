@@ -1,0 +1,198 @@
+---
+import Base from '../../layouts/Base.astro'
+import {
+  fetchBandiAttivi,
+  REGIONI,
+  regioneBySlug,
+  regioniDiBando,
+  sediProvinciali,
+  profiloBando,
+  PROFILI,
+  dataItaliana,
+  giorniAllaScadenza,
+  type Bando,
+} from '../../lib/supabase'
+
+// Carico tutti i bandi UNA volta e li distribuisco per regione: niente query per
+// pagina. Le regioni senza bandi non generano pagina.
+export async function getStaticPaths() {
+  const bandi = await fetchBandiAttivi()
+  return REGIONI.map((r) => ({
+    params: { regione: r.slug },
+    props: { items: bandi.filter((b) => regioniDiBando(b).includes(r.slug)) },
+  })).filter((p) => p.props.items.length > 0)
+}
+
+const { regione } = Astro.params
+const info = regioneBySlug(regione!)!
+const { items } = Astro.props as { items: Bando[] }
+
+// View-model: tutti i calcoli nel frontmatter (il parser Astro non gradisce
+// "<"/"<=" nel template).
+type Riga = {
+  titolo: string
+  link: string
+  ente: string
+  sede: string
+  posti: number | null
+  scadenzaFmt: string | null
+  urgente: boolean
+  giorniLabel: string
+  scaduto: boolean
+  profilo: string
+  ordine: number
+}
+
+const righe: Riga[] = items
+  .map((b) => {
+    const giorni = giorniAllaScadenza(b.data_scadenza)
+    let giorniLabel = ''
+    if (giorni !== null && giorni >= 0)
+      giorniLabel = giorni === 0 ? 'oggi' : `tra ${giorni} g`
+    return {
+      titolo: b.titolo,
+      link: b.link,
+      ente: b.ente,
+      sede: sediProvinciali(b) || info.nome,
+      posti: b.posti,
+      scadenzaFmt: b.data_scadenza ? dataItaliana(b.data_scadenza) : null,
+      urgente: giorni !== null && giorni >= 0 && giorni <= 7,
+      giorniLabel,
+      scaduto: giorni !== null && giorni < 0,
+      profilo: profiloBando(b),
+      ordine: giorni === null ? Number.MAX_SAFE_INTEGER : giorni,
+    }
+  })
+  // Ordino per scadenza più vicina; le scadute (se mai presenti) in fondo.
+  .sort((a, b) => (a.scaduto === b.scaduto ? a.ordine - b.ordine : a.scaduto ? 1 : -1))
+
+const sezioni = PROFILI.map((p) => ({
+  ...p,
+  righe: righe.filter((r) => r.profilo === p.key),
+})).filter((s) => s.righe.length > 0)
+---
+
+<Base
+  title={`Concorsi pubblici in ${info.nome} | My Italian Job`}
+  description={`Concorsi della Pubblica Amministrazione in ${info.nome}, divisi per profilo professionale. Aggiornati ogni giorno da inPA.`}
+>
+  <nav class="crumbs"><a href="/pa">← Concorsi PA</a></nav>
+
+  <section class="hero">
+    <h1>Concorsi pubblici in {info.nome}</h1>
+    <p class="lead">
+      {items.length} bandi aperti. Apri un profilo per vedere gli annunci.
+      Candidature sul portale ufficiale inPA.
+    </p>
+  </section>
+
+  {
+    sezioni.map((s, i) => (
+      <details class="sez" open={i === 0}>
+        <summary>
+          <span class="sez-tit">{s.label}</span>
+          <span class="sez-count">{s.righe.length}</span>
+          <span class="chev" aria-hidden="true">▾</span>
+        </summary>
+        <p class="sez-nota">{s.nota}</p>
+        <ul class="jobs">
+          {s.righe.map((r) => (
+            <li class="job">
+              <a href={r.link} target="_blank" rel="noopener">
+                <h3>{r.titolo}</h3>
+                <div class="job-meta">
+                  <span class="ente">{r.ente}</span>
+                  <span class="loc">{r.sede}</span>
+                  {r.posti && r.posti > 0 && (
+                    <span class="posti">{r.posti} {r.posti === 1 ? 'posto' : 'posti'}</span>
+                  )}
+                </div>
+              </a>
+              {r.scadenzaFmt ? (
+                <span class={r.urgente ? 'deadline urgent' : 'deadline'}>
+                  Scade il {r.scadenzaFmt}
+                  {r.giorniLabel && <small> · {r.giorniLabel}</small>}
+                </span>
+              ) : (
+                <span class="deadline open">Candidatura aperta</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </details>
+    ))
+  }
+
+  <style>
+    .crumbs { padding-top: 1rem; font-size: 0.9rem; }
+    .crumbs a { color: var(--rust); text-decoration: none; font-weight: 600; }
+
+    .hero { padding: 0.8rem 0 1.2rem; }
+    .hero h1 { font-size: 2.1rem; line-height: 1.1; letter-spacing: -0.02em; margin: 0.2rem 0 0.3rem; }
+    .lead { color: var(--muted); font-size: 1rem; margin: 0; }
+
+    .sez {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin: 0 0 0.8rem;
+      overflow: hidden;
+    }
+    .sez summary {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.9rem 1.1rem;
+      cursor: pointer;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      list-style: none;
+    }
+    .sez summary::-webkit-details-marker { display: none; }
+    .sez-tit { font-size: 1.05rem; }
+    .sez-count {
+      background: #f1e9dd;
+      color: var(--rust);
+      border-radius: 999px;
+      padding: 0.05rem 0.6rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+    .chev { margin-left: auto; color: var(--muted); transition: transform 0.18s ease; }
+    .sez[open] .chev { transform: rotate(180deg); }
+    .sez-nota { color: var(--muted); font-size: 0.85rem; margin: -0.2rem 1.1rem 0.6rem; }
+
+    .jobs { list-style: none; padding: 0 0.8rem 0.8rem; margin: 0; display: grid; gap: 0.55rem; }
+    .job {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.8rem 0.95rem;
+    }
+    .job > a { display: block; text-decoration: none; }
+    .job h3 {
+      font-size: 0.95rem;
+      line-height: 1.35;
+      margin: 0 0 0.35rem;
+      text-transform: none;
+      font-weight: 700;
+    }
+    .job-meta { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; color: var(--muted); font-size: 0.85rem; }
+    .ente { font-weight: 600; color: var(--ink); }
+    .posti { border: 1px solid var(--border); border-radius: 999px; padding: 0 0.5rem; font-size: 0.78rem; }
+    .deadline {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--rust);
+      background: #f1e9dd;
+      border-radius: 999px;
+      padding: 0.12rem 0.6rem;
+    }
+    .deadline small { font-weight: 400; opacity: 0.8; }
+    .deadline.urgent { color: #fff; background: #c0392b; }
+    .deadline.open { color: var(--muted); background: transparent; padding-left: 0; }
+    .job:hover { border-color: var(--rust); }
+  </style>
+</Base>
