@@ -1,0 +1,196 @@
+---
+import Base from '../../layouts/Base.astro'
+import {
+  supabase,
+  VACANCY_FIELDS,
+  STATI_VISIBILI,
+  ORGS,
+  orgBySlug,
+  schemaGruppi,
+  dataItaliana,
+  giorniAllaScadenza,
+  type Vacancy,
+} from '../../lib/supabase'
+
+export function getStaticPaths() {
+  return ORGS.map((o) => ({ params: { org: o.slug } }))
+}
+
+const { org } = Astro.params
+const info = orgBySlug(org!)!
+
+const { data, error } = await supabase
+  .from('vacancy')
+  .select(VACANCY_FIELDS)
+  .eq('ente', info.ente)
+  .in('stato', STATI_VISIBILI)
+  .order('scadenza', { ascending: true, nullsFirst: false })
+const vacancies = (data ?? []) as Vacancy[]
+const portale = vacancies.find((v) => v.fonte_url)?.fonte_url ?? null
+
+function sede(v: Vacancy): string {
+  const s = (v.sedi ?? []).filter(Boolean).join(' · ')
+  if (v.home_based) return s ? `${s} · da remoto` : 'Da remoto'
+  return s || '—'
+}
+
+// View-model: tutti i calcoli (giorni, urgenza, gruppo) nel frontmatter, per non
+// usare operatori "<"/"<=" nel template (rotti dal parser Astro).
+type Riga = {
+  titolo: string
+  url: string
+  sede: string
+  tipo: string | null
+  scadenzaFmt: string | null
+  urgente: boolean
+  giorniLabel: string
+  gruppo: string
+}
+
+const { gruppi, classifica } = schemaGruppi(org as any)
+
+const righe: Riga[] = vacancies.map((v) => {
+  const giorni = giorniAllaScadenza(v.scadenza)
+  let giorniLabel = ''
+  if (giorni !== null && giorni >= 0) giorniLabel = giorni === 0 ? 'oggi' : `tra ${giorni} g`
+  return {
+    titolo: v.titolo,
+    url: v.url,
+    sede: sede(v),
+    tipo: v.tipo_contratto,
+    scadenzaFmt: v.scadenza ? dataItaliana(v.scadenza) : null,
+    urgente: giorni !== null && giorni >= 0 && giorni <= 7,
+    giorniLabel,
+    gruppo: classifica(v),
+  }
+})
+
+const sezioni = gruppi
+  .map((g) => ({ ...g, righe: righe.filter((r) => r.gruppo === g.key) }))
+  .filter((s) => s.righe.length > 0)
+---
+
+<Base
+  title={`${info.ente} — posizioni aperte | My Italian Job`}
+  description={`Posizioni aperte ${info.ente} (${info.full}), divise per categoria. Aggiornate ogni giorno.`}
+>
+  <nav class="crumbs"><a href="/onu">← Lavoro ONU</a></nav>
+
+  <section class="hero">
+    <h1>{info.ente}</h1>
+    <p class="full">{info.full}</p>
+    <p class="lead">
+      {vacancies.length} posizioni aperte. Apri una categoria per vedere gli annunci.
+      Candidature sul portale ufficiale.
+    </p>
+    {portale && (
+      <a class="portale" href={portale} target="_blank" rel="noopener">Portale carriere ufficiale →</a>
+    )}
+  </section>
+
+  {error && <p class="err">Errore nel caricamento: {error.message}</p>}
+  {!error && vacancies.length === 0 && <p class="muted">Nessuna posizione aperta al momento.</p>}
+
+  {
+    sezioni.map((s, i) => (
+      <details class="sez" open={i === 0}>
+        <summary>
+          <span class="sez-tit">{s.label}</span>
+          <span class="sez-count">{s.righe.length}</span>
+          <span class="chev" aria-hidden="true">▾</span>
+        </summary>
+        <p class="sez-nota">{s.nota}</p>
+        <ul class="jobs">
+          {s.righe.map((r) => (
+            <li class="job">
+              <a href={r.url} target="_blank" rel="noopener">
+                <h3>{r.titolo}</h3>
+                <div class="job-meta">
+                  <span class="loc">{r.sede}</span>
+                  {r.tipo && <span class="ctype">{r.tipo}</span>}
+                </div>
+              </a>
+              {r.scadenzaFmt ? (
+                <span class={r.urgente ? 'deadline urgent' : 'deadline'}>
+                  Scade il {r.scadenzaFmt}
+                  {r.giorniLabel && <small> · {r.giorniLabel}</small>}
+                </span>
+              ) : (
+                <span class="deadline open">Candidatura aperta</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </details>
+    ))
+  }
+
+  <style>
+    .crumbs { padding-top: 1rem; font-size: 0.9rem; }
+    .crumbs a { color: var(--rust); text-decoration: none; font-weight: 600; }
+
+    .hero { padding: 0.8rem 0 1.2rem; }
+    .hero h1 { font-size: 2.1rem; line-height: 1.1; letter-spacing: -0.02em; margin: 0.2rem 0 0.2rem; }
+    .full { color: var(--ink); font-weight: 600; margin: 0 0 0.5rem; }
+    .lead { color: var(--muted); font-size: 1rem; margin: 0 0 0.7rem; }
+    .portale { color: var(--rust); font-weight: 600; font-size: 0.9rem; text-decoration: none; }
+    .err { color: #b3261e; }
+
+    .sez {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin: 0 0 0.8rem;
+      overflow: hidden;
+    }
+    .sez summary {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.9rem 1.1rem;
+      cursor: pointer;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      list-style: none;
+    }
+    .sez summary::-webkit-details-marker { display: none; }
+    .sez-tit { font-size: 1.05rem; }
+    .sez-count {
+      background: #f1e9dd;
+      color: var(--rust);
+      border-radius: 999px;
+      padding: 0.05rem 0.6rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+    .chev { margin-left: auto; color: var(--muted); transition: transform 0.18s ease; }
+    .sez[open] .chev { transform: rotate(180deg); }
+    .sez-nota { color: var(--muted); font-size: 0.85rem; margin: -0.2rem 1.1rem 0.6rem; }
+
+    .jobs { list-style: none; padding: 0 0.8rem 0.8rem; margin: 0; display: grid; gap: 0.55rem; }
+    .job {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.8rem 0.95rem;
+    }
+    .job > a { display: block; text-decoration: none; }
+    .job h3 { font-size: 0.98rem; line-height: 1.35; margin: 0 0 0.35rem; }
+    .job-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem; color: var(--muted); font-size: 0.85rem; }
+    .ctype { border: 1px solid var(--border); border-radius: 999px; padding: 0 0.5rem; font-size: 0.78rem; }
+    .deadline {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--rust);
+      background: #f1e9dd;
+      border-radius: 999px;
+      padding: 0.12rem 0.6rem;
+    }
+    .deadline small { font-weight: 400; opacity: 0.8; }
+    .deadline.urgent { color: #fff; background: #c0392b; }
+    .deadline.open { color: var(--muted); background: transparent; padding-left: 0; }
+    .job:hover { border-color: var(--rust); }
+  </style>
+</Base>

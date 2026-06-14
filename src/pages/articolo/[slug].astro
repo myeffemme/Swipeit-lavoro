@@ -30,7 +30,7 @@ function etichettaFonte(f: Fonte): string {
 }
 ---
 
-<Base title={`${a.argomento} — SwipeIt Lavoro`} description={a.argomento}>
+<Base title={`${a.argomento} — My Italian Job`} description={a.argomento}>
   <article class="post">
     <a class="back" href="/">← Tutti gli articoli</a>
 
@@ -63,14 +63,6 @@ function etichettaFonte(f: Fonte): string {
         </section>
       )
     }
-
-    <aside class="appcta" id="scarica">
-      <p>
-        <strong>Cerchi lavoro?</strong> Con <strong>SwipeIt</strong> trovi offerte
-        adatte a te scorrendole come su un'app di incontri.
-      </p>
-      <a class="cta" href="https://swipeit.it">Scopri SwipeIt</a>
-    </aside>
   </article>
 
   <style>
@@ -118,22 +110,5 @@ function etichettaFonte(f: Fonte): string {
     .fonti h2 { font-size: 1.1rem; }
     .fonti ul { padding-left: 1.2rem; color: var(--muted); font-size: 0.95rem; }
     .fonti a { color: var(--rust); }
-    .appcta {
-      margin-top: 2.5rem;
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 1.2rem;
-    }
-    .appcta p { margin: 0 0 0.8rem; }
-    .appcta .cta {
-      display: inline-block;
-      text-decoration: none;
-      background: var(--rust);
-      color: #fff;
-      font-weight: 600;
-      padding: 0.55rem 1rem;
-      border-radius: 999px;
-    }
   </style>
 </Base>

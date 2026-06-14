@@ -1,0 +1,88 @@
+---
+import Base from '../../layouts/Base.astro'
+import { supabase, STATI_VISIBILI, ORGS } from '../../lib/supabase'
+
+// Conteggio posizioni attive per organizzazione (per i badge sulle schede).
+const { data } = await supabase.from('vacancy').select('ente, stato').in('stato', STATI_VISIBILI)
+const counts: Record<string, number> = {}
+for (const r of data ?? []) counts[r.ente] = (counts[r.ente] ?? 0) + 1
+const totale = (data ?? []).length
+---
+
+<Base
+  title="Lavoro nelle organizzazioni internazionali — My Italian Job"
+  description="Posizioni aperte in FAO, WFP, IFAD e Alliance Bioversity-CIAT. Aggiornate ogni giorno."
+>
+  <section class="hero">
+    <h1>Lavoro nelle organizzazioni internazionali</h1>
+    <p class="lead">
+      Posizioni aperte nelle agenzie ONU e nei centri di ricerca con sede a Roma.
+      Scegli un'organizzazione per vedere le posizioni, divise per categoria.
+      Aggiornate ogni notte.
+    </p>
+  </section>
+
+  <ul class="orgs">
+    {
+      ORGS.map((o) => (
+        <li>
+          <a class="org" href={`/onu/${o.slug}`}>
+            <div class="org-head">
+              <span class="org-name">{o.ente}</span>
+              <span class="org-count">{counts[o.ente] ?? 0}</span>
+            </div>
+            <span class="org-full">{o.full}</span>
+            <span class="org-go">Vedi le posizioni →</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <p class="muted total">{totale} posizioni aperte in totale · candidature sui portali ufficiali.</p>
+
+  <style>
+    .hero { padding: 1.5rem 0 0.5rem; }
+    .hero h1 { font-size: 2rem; line-height: 1.15; letter-spacing: -0.02em; margin: 0.2rem 0 0.6rem; }
+    .lead { color: var(--muted); font-size: 1.05rem; margin: 0; }
+
+    .orgs {
+      list-style: none;
+      padding: 0;
+      margin: 1.6rem 0 1rem;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.8rem;
+    }
+    .org {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      text-decoration: none;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .org:hover { border-color: var(--rust); transform: translateY(-2px); }
+    .org-head { display: flex; align-items: baseline; gap: 0.5rem; }
+    .org-name { font-weight: 800; letter-spacing: -0.01em; font-size: 1.1rem; }
+    .org-count {
+      margin-left: auto;
+      background: #f1e9dd;
+      color: var(--rust);
+      border-radius: 999px;
+      padding: 0.05rem 0.6rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .org-full { color: var(--muted); font-size: 0.82rem; line-height: 1.3; }
+    .org-go { margin-top: 0.5rem; color: var(--rust); font-weight: 600; font-size: 0.85rem; }
+    .total { font-size: 0.9rem; margin-top: 0.5rem; }
+
+    @media (max-width: 560px) {
+      .orgs { grid-template-columns: 1fr; }
+    }
+  </style>
+</Base>

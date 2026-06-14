@@ -5,7 +5,7 @@ interface Props {
 }
 const {
   title,
-  description = 'Inchieste, dati e analisi sul lavoro in Italia. A cura del team di SwipeIt.',
+  description = 'Inchieste, dati e analisi sul lavoro in Italia. My Italian Job.',
 } = Astro.props
 ---
 
@@ -20,15 +20,12 @@ const {
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="/">
-        <span class="brand-mark">SwipeIt</span><span class="brand-sub">Lavoro</span>
-      </a>
+      <a class="brand" href="/">My Italian <span class="brand-job">Job</span></a>
       <nav class="nav">
         <a href="/">Articoli</a>
         <a href="/pa" class="soon">Concorsi PA</a>
         <a href="/onu">Lavoro ONU</a>
       </nav>
-      <a class="cta" href="#scarica">Scarica l'app</a>
     </header>
 
     <main class="site-main">
@@ -36,14 +33,15 @@ const {
     </main>
 
     <footer class="site-footer">
-      <p>SwipeIt Lavoro — osservatorio sul lavoro in Italia.</p>
-      <p class="muted">© 2026 SwipeIt · <a href="https://swipeit.it">swipeit.it</a></p>
+      <p>My Italian Job — osservatorio sul lavoro in Italia.</p>
+      <p class="muted">© 2026 My Italian Job</p>
     </footer>
 
     <style is:global>
       :root {
         --rust: #d87721;
         --rust-bright: #ff7a1a;
+        --saffron: #f4b41a;
         --ink: #1c1a17;
         --muted: #6b655c;
         --bg: #faf7f2;
@@ -68,24 +66,18 @@ const {
         margin: 0 auto;
         padding: 1rem 1.25rem;
       }
-      .brand { text-decoration: none; font-weight: 800; letter-spacing: -0.02em; }
-      .brand-mark { color: var(--rust); }
-      .brand-sub { color: var(--ink); margin-left: 0.25rem; font-weight: 700; }
+      .brand {
+        text-decoration: none;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        font-size: 1.6rem;
+        color: var(--ink);
+      }
+      .brand-job { font-style: italic; color: var(--saffron); }
       .nav { display: flex; gap: 1rem; margin-left: auto; font-size: 0.95rem; }
       .nav a { text-decoration: none; color: var(--muted); }
       .nav a:hover { color: var(--ink); }
       .nav .soon { opacity: 0.5; }
-      .cta {
-        text-decoration: none;
-        background: var(--rust);
-        color: #fff;
-        font-weight: 600;
-        padding: 0.5rem 0.9rem;
-        border-radius: 999px;
-        font-size: 0.9rem;
-        white-space: nowrap;
-      }
-      .cta:hover { background: var(--rust-bright); }
       .site-main { max-width: var(--maxw); margin: 0 auto; padding: 1rem 1.25rem 4rem; }
       .site-footer {
         max-width: var(--maxw);
