@@ -1,0 +1,144 @@
+---
+import Base from '../layouts/Base.astro'
+import Tag from '../components/Tag.astro'
+import {
+  fetchArticoli,
+  articoloSlug,
+  dataItaliana,
+  estratto,
+  isLongForm,
+  etichettaRubrica,
+  tagsDiArticolo,
+  tagPrincipale,
+} from '../lib/supabase'
+
+// Il blog: tutti gli articoli usciti TRANNE le inchieste (i LongForm hanno la loro sezione).
+const articoli = (await fetchArticoli()).filter((a) => !isLongForm(a))
+---
+
+<Base
+  title="Post — tutti gli articoli di myitalianjob"
+  description="Tutti gli articoli e le inchieste sul lavoro in Italia, per tema."
+>
+  <section class="hero">
+    <h1>Post</h1>
+    <p class="lead">
+      Tutto quello che abbiamo pubblicato. Passa il mouse su una tessera per
+      l'anteprima.
+    </p>
+  </section>
+
+  {articoli.length === 0 && <p class="muted vuoto">Niente da mostrare al momento.</p>}
+
+  <ul class="mosaic">
+    {
+      articoli.map((a) => {
+        const dom = tagPrincipale(a)
+        const tags = tagsDiArticolo(a)
+        return (
+          <li
+            class="tile"
+            style={`--tile-bg:${dom.bg};--tile-fg:${dom.fg}`}
+          >
+            <a href={`/articolo/${articoloSlug(a)}`}>
+              <div class="tile-meta">
+                <time>{dataItaliana(a.data_sessione)}</time>
+                {etichettaRubrica(a) && <span class="kind">{etichettaRubrica(a)}</span>}
+              </div>
+              <h2>{a.argomento}</h2>
+              <div class="tags">
+                {tags.slice(0, 2).map((t) => (
+                  <Tag tag={t} size="sm" />
+                ))}
+              </div>
+              <p class="preview">{estratto(a.testo_markdown, 160)}</p>
+            </a>
+          </li>
+        )
+      })
+    }
+  </ul>
+
+  <style>
+    .hero { padding: 1.5rem 0 0.5rem; }
+    .hero h1 {
+      font-size: 2.1rem;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+      margin: 0.2rem 0 0.6rem;
+    }
+    .lead { color: var(--muted); font-size: 1.05rem; margin: 0; }
+    .vuoto { margin-top: 1.5rem; }
+
+    .mosaic {
+      list-style: none;
+      padding: 0;
+      margin: 1.6rem 0 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 0.7rem;
+    }
+    .tile {
+      background: var(--tile-bg);
+      border-radius: 14px;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .tile a {
+      display: block;
+      text-decoration: none;
+      color: var(--tile-fg);
+      padding: 0.95rem 1rem;
+    }
+    .tile-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.74rem;
+      opacity: 0.8;
+    }
+    .kind {
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.62rem;
+    }
+    .tile h2 {
+      font-size: 1.02rem;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+      margin: 0.45rem 0 0.55rem;
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+    /* Anteprima nascosta: si rivela ingrandendo la tessera all'hover. */
+    .preview {
+      margin: 0;
+      font-size: 0.85rem;
+      line-height: 1.45;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height 0.2s ease, opacity 0.2s ease, margin-top 0.2s ease;
+    }
+    .tile:hover,
+    .tile:focus-within {
+      transform: scale(1.05);
+      box-shadow: 0 14px 34px rgba(28, 26, 23, 0.18);
+      position: relative;
+      z-index: 5;
+    }
+    .tile:hover .preview,
+    .tile:focus-within .preview {
+      max-height: 9rem;
+      opacity: 0.95;
+      margin-top: 0.6rem;
+    }
+    @media (max-width: 480px) {
+      .mosaic { grid-template-columns: repeat(2, 1fr); }
+      .tile:hover, .tile:focus-within { transform: none; }
+    }
+  </style>
+</Base>

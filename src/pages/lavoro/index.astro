@@ -1,0 +1,133 @@
+---
+import Base from '../../layouts/Base.astro'
+import { supabase, STATI_VISIBILI } from '../../lib/supabase'
+
+// Conteggi reali (visibili via RLS anche con chiave pubblica).
+async function conta(tabella: string): Promise<number> {
+  const { count } = await supabase
+    .from(tabella)
+    .select('id', { count: 'exact', head: true })
+    .in('stato', STATI_VISIBILI)
+  return count ?? 0
+}
+const [nPa, nOnu] = await Promise.all([conta('bandi_pa'), conta('vacancy')])
+
+const aree = [
+  {
+    href: '/pa',
+    nome: 'Concorsi PA',
+    desc: 'Concorsi della Pubblica Amministrazione italiana, per regione e profilo.',
+    conteggio: nPa,
+    unita: 'bandi aperti',
+    attivo: true,
+  },
+  {
+    href: '/onu',
+    nome: 'Agenzie Internazionali',
+    desc: 'Posizioni nelle agenzie ONU e nei centri di ricerca con sede in Italia.',
+    conteggio: nOnu,
+    unita: 'posizioni aperte',
+    attivo: true,
+  },
+  {
+    href: '/ue',
+    nome: 'Unione Europea',
+    desc: 'Concorsi e selezioni delle istituzioni europee (EPSO).',
+    conteggio: null,
+    unita: 'in arrivo',
+    attivo: false,
+  },
+]
+---
+
+<Base
+  title="Lavoro — concorsi e opportunità · myitalianjob"
+  description="Concorsi della Pubblica Amministrazione, posizioni nelle agenzie internazionali e concorsi UE. Aggiornati ogni giorno."
+>
+  <section class="hero">
+    <h1>Lavoro</h1>
+    <p class="lead">
+      Le opportunità di lavoro pubblico, in un posto solo: Pubblica
+      Amministrazione, Unione Europea e Agenzie Internazionali.
+    </p>
+  </section>
+
+  <ul class="aree">
+    {
+      aree.map((a) => (
+        <li class={a.attivo ? '' : 'soon'}>
+          <a class="area" href={a.attivo ? a.href : '/ue'}>
+            <div class="area-head">
+              <span class="area-name">{a.nome}</span>
+              {a.conteggio !== null ? (
+                <span class="area-count">{a.conteggio}</span>
+              ) : (
+                <span class="area-soon">soon</span>
+              )}
+            </div>
+            <p class="area-desc">{a.desc}</p>
+            <span class="area-go">
+              {a.attivo ? `${a.unita} · vedi →` : 'In arrivo →'}
+            </span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <p class="muted nota">
+    Per la lettura degli articoli non serve registrarsi. La consultazione degli
+    annunci di lavoro richiederà un account (in arrivo).
+  </p>
+
+  <style>
+    .hero { padding: 1.5rem 0 0.5rem; }
+    .hero h1 {
+      font-size: 2.1rem;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+      margin: 0.2rem 0 0.6rem;
+    }
+    .lead { color: var(--muted); font-size: 1.05rem; margin: 0; }
+
+    .aree {
+      list-style: none;
+      padding: 0;
+      margin: 1.6rem 0 1rem;
+      display: grid;
+      gap: 0.9rem;
+    }
+    .area {
+      display: block;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.2rem 1.3rem;
+      text-decoration: none;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .area:hover { border-color: var(--rust); transform: translateY(-2px); }
+    .soon .area { opacity: 0.65; }
+    .area-head { display: flex; align-items: baseline; gap: 0.6rem; }
+    .area-name { font-weight: 800; font-size: 1.25rem; letter-spacing: -0.01em; }
+    .area-count {
+      margin-left: auto;
+      background: #f1e9dd;
+      color: var(--rust);
+      border-radius: 999px;
+      padding: 0.1rem 0.7rem;
+      font-size: 0.95rem;
+      font-weight: 800;
+    }
+    .area-soon {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .area-desc { color: var(--muted); margin: 0.5rem 0 0.8rem; }
+    .area-go { color: var(--rust); font-weight: 600; font-size: 0.9rem; }
+    .nota { font-size: 0.85rem; margin-top: 0.5rem; }
+  </style>
+</Base>

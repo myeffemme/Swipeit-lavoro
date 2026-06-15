@@ -20,6 +20,17 @@ export type Fonte = {
   title?: string
 }
 
+// `rubrica` = la sezione editoriale del pezzo, decisa alla CREAZIONE (non dedotta
+// dal testo). In prospettiva una colonna del DB (pipeline/dashboard); finché non
+// c'è resta `undefined` per gli articoli reali → trattati come 'articolo' (post
+// generico del blog). Sugli articoli demo è impostata a mano.
+//   articolo  = post generico (compare in /post)
+//   longform  = inchiesta: ha un elenco suo e NON compare in /post
+//   dalmondo  = traduzione dalla stampa economica internazionale (cita l'autore)
+//   storia    = eventi del passato legati al lavoro
+//   trend     = dinamiche di attualità (AI, nuovi modi di lavorare, ...)
+export type Rubrica = 'articolo' | 'longform' | 'dalmondo' | 'storia' | 'trend'
+
 export type Articolo = {
   id: number
   data_sessione: string
@@ -29,6 +40,7 @@ export type Articolo = {
   testo_markdown: string | null
   fonti: Fonte[] | null
   created_at: string
+  rubrica?: Rubrica
 }
 
 export const ARTICOLO_FIELDS =
@@ -56,6 +68,140 @@ function slugify(s: string): string {
 export function articoloSlug(a: Pick<Articolo, 'id' | 'argomento'>): string {
   const base = slugify(a.argomento)
   return base ? `${a.id}-${base}` : String(a.id)
+}
+
+// ---------------------------------------------------------------------------
+// CLASSIFICAZIONE ARTICOLI — euristica frontend, PROVVISORIA.
+// «News», «LongForm» e i «Tag» NON esistono ancora come colonne nel DB. Finché
+// non si aggiungono `tipo`/`tags` (assegnati in dashboard al momento dell'approvazione)
+// li deduciamo qui dal testo. Tutto concentrato in questo blocco: per migrare al DB
+// basterà cambiare queste funzioni, le pagine restano identiche.
+// ---------------------------------------------------------------------------
+
+// Rubrica effettiva (default = 'articolo', il post generico del blog).
+export function rubricaDi(a: Pick<Articolo, 'rubrica'>): Rubrica {
+  return a.rubrica ?? 'articolo'
+}
+
+// Un pezzo è un'inchiesta (LongForm) se è stato ETICHETTATO così alla creazione.
+export function isLongForm(a: Pick<Articolo, 'rubrica'>): boolean {
+  return rubricaDi(a) === 'longform'
+}
+
+// Le rubriche con una pagina propria (slug = URL /<slug>). Il post generico
+// ('articolo') non è qui: vive solo nel blog /post.
+export const RUBRICHE: {
+  key: Rubrica
+  slug: string
+  label: string
+  titolo: string
+  descrizione: string
+}[] = [
+  {
+    key: 'longform',
+    slug: 'longform',
+    label: 'LongForm',
+    titolo: 'LongForm',
+    descrizione: 'Le inchieste: i temi del lavoro raccontati per esteso, con i dati in mano.',
+  },
+  {
+    key: 'dalmondo',
+    slug: 'dal-mondo',
+    label: 'Dal Mondo',
+    titolo: 'Dal Mondo',
+    descrizione:
+      'Il lavoro nella stampa economica internazionale: sintesi e traduzioni, sempre con la fonte e l’autore.',
+  },
+  {
+    key: 'storia',
+    slug: 'storia',
+    label: 'Storia',
+    titolo: 'Storia',
+    descrizione: 'Eventi del passato che hanno cambiato il modo di lavorare.',
+  },
+  {
+    key: 'trend',
+    slug: 'trend',
+    label: 'Trend',
+    titolo: 'Trend',
+    descrizione:
+      'Le dinamiche che stanno ridisegnando il lavoro: AI, nuove generazioni, nuovi modi di organizzarsi.',
+  },
+]
+
+export function rubricaBySlug(slug: string) {
+  return RUBRICHE.find((r) => r.slug === slug) ?? null
+}
+
+// Etichetta della rubrica per i badge (null per il post generico 'articolo').
+export function etichettaRubrica(a: Pick<Articolo, 'rubrica'>): string | null {
+  const r = rubricaDi(a)
+  return RUBRICHE.find((x) => x.key === r)?.label ?? null
+}
+
+// Estratto in chiaro dal Markdown (per card e preview delle tessere).
+export function estratto(md: string | null, n = 180): string {
+  if (!md) return ''
+  const txt = md
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[#>*_`~|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return txt.length > n ? txt.slice(0, n).trimEnd() + '…' : txt
+}
+
+// Tassonomia dei tag editoriali. `match` = regex su argomento+testo (lowercase);
+// `bg`/`fg` = colori della pillola. L'ORDINE è una PRECEDENZA: il primo che matcha
+// è il tag «dominante» (dà la tinta alla tessera in /post).
+export type Tag = { key: string; label: string; bg: string; fg: string; match: RegExp }
+
+export const TAGS: Tag[] = [
+  { key: 'concorsi', label: 'Concorsi PA', bg: '#e3edff', fg: '#1b3a7a', match: /concors|\bbando\b|inpa|pubblic[ao] amministrazion|reclutament|graduator/ },
+  { key: 'formazione', label: 'Formazione & PNRR', bg: '#ffe8d4', fg: '#9a4a10', match: /formazion|reskill|upskill|\bpnrr\b|competenz|apprendis|tirocin|istruzion|università|universita/ },
+  { key: 'salari', label: 'Salari & Buste paga', bg: '#dcf3e4', fg: '#1f6b3a', match: /salar|stipend|retribu|busta paga|cuneo|detassazion|premi di produttiv|minimo|\bpaga\b/ },
+  { key: 'contratti', label: 'Contratti & CCNL', bg: '#d6f0f0', fg: '#0f5e63', match: /contratt|\bccnl\b|rinnovo|sindacat|collettiv|precari/ },
+  { key: 'previdenza', label: 'INPS & Previdenza', bg: '#ece1ff', fg: '#5a2ca0', match: /\binps\b|pension|previdenz|contribut|naspi|ape social|assegno unico/ },
+  { key: 'fisco', label: 'Fisco', bg: '#fff1c9', fg: '#8a6a00', match: /fisc|\btass|irpef|impost|agenzia delle entrate|aliquot|cuneo fiscal/ },
+  { key: 'mercato', label: 'Mercato del lavoro', bg: '#e7eaef', fg: '#374151', match: /occupazion|disoccupa|istat|assunzion|licenziament|mercato del lavoro|posti di lavoro|smart working|telelavoro/ },
+  { key: 'diritti', label: 'Diritti & Sicurezza', bg: '#ffe0e0', fg: '#9b1c1c', match: /diritt|sicurezz|infortun|tutel|discrimina|molest|caporalat/ },
+]
+
+// Tag di ripiego se nessuno matcha.
+export const TAG_DEFAULT: Tag = { key: 'lavoro', label: 'Lavoro', bg: '#f1e9dd', fg: '#9a5512', match: /(?!)/ }
+
+export function tagsDiArticolo(a: Pick<Articolo, 'argomento' | 'testo_markdown'>): Tag[] {
+  const blob = `${a.argomento} ${a.testo_markdown ?? ''}`.toLowerCase()
+  const hit = TAGS.filter((t) => t.match.test(blob))
+  return hit.length ? hit : [TAG_DEFAULT]
+}
+
+// Tag «dominante» (primo per precedenza) — usato per la tinta delle tessere.
+export function tagPrincipale(a: Pick<Articolo, 'argomento' | 'testo_markdown'>): Tag {
+  return tagsDiArticolo(a)[0]
+}
+
+// Tutti gli articoli pubblicati, dal più recente.
+// In sviluppo (`npm run dev`), se il DB non restituisce nulla, ripiega sugli
+// articoli DEMO così la struttura del sito è visibile durante la costruzione.
+// In build di produzione il fallback è disattivato: niente contenuti finti online.
+export async function fetchArticoli(): Promise<Articolo[]> {
+  const { data } = await supabase
+    .from('articoli')
+    .select(ARTICOLO_FIELDS)
+    .in('stato', STATI_VISIBILI)
+    .order('data_sessione', { ascending: false })
+    .order('id', { ascending: false })
+  const rows = (data ?? []) as Articolo[]
+  if (rows.length === 0 && import.meta.env.DEV) {
+    const { DEMO_ARTICOLI } = await import('./demo')
+    // Stesso ordinamento del DB: dal più recente.
+    return [...DEMO_ARTICOLI].sort(
+      (a, b) => b.data_sessione.localeCompare(a.data_sessione) || b.id - a.id,
+    )
+  }
+  return rows
 }
 
 // ---------------------------------------------------------------------------

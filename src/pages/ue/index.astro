@@ -1,0 +1,50 @@
+---
+import Base from '../../layouts/Base.astro'
+---
+
+<Base
+  title="Concorsi UE (EPSO) — in arrivo · myitalianjob"
+  description="I concorsi delle istituzioni dell'Unione Europea, presto su myitalianjob."
+>
+  <section class="hero">
+    <a class="back" href="/lavoro">← Lavoro</a>
+    <h1>Concorsi Unione Europea</h1>
+    <p class="lead">
+      Le selezioni delle istituzioni europee passano da <strong>EPSO</strong>
+      (European Personnel Selection Office). Stiamo costruendo questa sezione,
+      separata dai concorsi della PA italiana.
+    </p>
+  </section>
+
+  <div class="card">
+    <p class="muted">
+      Nel frattempo, le opportunità già disponibili sono nelle altre due aree:
+    </p>
+    <div class="links">
+      <a href="/pa">Concorsi PA →</a>
+      <a href="/onu">Agenzie Internazionali →</a>
+    </div>
+  </div>
+
+  <style>
+    .hero { padding: 1.5rem 0 0.5rem; }
+    .back { color: var(--muted); text-decoration: none; font-size: 0.9rem; }
+    .hero h1 {
+      font-size: 2rem;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin: 0.6rem 0 0.6rem;
+    }
+    .lead { color: var(--muted); font-size: 1.05rem; margin: 0; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.2rem 1.3rem;
+      margin-top: 1.6rem;
+    }
+    .card p { margin: 0 0 0.8rem; }
+    .links { display: flex; flex-wrap: wrap; gap: 1.2rem; }
+    .links a { color: var(--rust); font-weight: 600; text-decoration: none; }
+  </style>
+</Base>

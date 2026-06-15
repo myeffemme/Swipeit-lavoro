@@ -1,29 +1,29 @@
 ---
 import Base from '../../layouts/Base.astro'
 import { marked } from 'marked'
+import ShareButtons from '../../components/ShareButtons.astro'
+import Tag from '../../components/Tag.astro'
 import {
-  supabase,
-  ARTICOLO_FIELDS,
-  STATI_VISIBILI,
+  fetchArticoli,
   articoloSlug,
   dataItaliana,
+  etichettaRubrica,
+  tagsDiArticolo,
   type Articolo,
   type Fonte,
 } from '../../lib/supabase'
 
 export async function getStaticPaths() {
-  const { data } = await supabase
-    .from('articoli')
-    .select(ARTICOLO_FIELDS)
-    .in('stato', STATI_VISIBILI)
-
-  const articoli = (data ?? []) as Articolo[]
+  const articoli = await fetchArticoli()
   return articoli.map((a) => ({ params: { slug: articoloSlug(a) }, props: { a } }))
 }
 
 const { a } = Astro.props as { a: Articolo }
 const html = a.testo_markdown ? await marked.parse(a.testo_markdown) : ''
 const fonti: Fonte[] = Array.isArray(a.fonti) ? a.fonti : []
+const tags = tagsDiArticolo(a)
+const rubrica = etichettaRubrica(a)
+const urlAssoluto = new URL(`/articolo/${articoloSlug(a)}`, Astro.site).href
 
 function etichettaFonte(f: Fonte): string {
   return f.titolo ?? f.title ?? f.url ?? 'Fonte'
@@ -32,14 +32,19 @@ function etichettaFonte(f: Fonte): string {
 
 <Base title={`${a.argomento} — My Italian Job`} description={a.argomento}>
   <article class="post">
-    <a class="back" href="/">← Tutti gli articoli</a>
+    <a class="back" href="/post">← Tutti i post</a>
 
     <div class="post-meta">
       <time>{dataItaliana(a.data_sessione)}</time>
+      {rubrica && <span class="kind">{rubrica}</span>}
       {a.stato !== 'ACTIVE' && <span class="badge">{a.stato}</span>}
     </div>
 
     <h1>{a.argomento}</h1>
+
+    <div class="post-tags">
+      {tags.map((t) => <Tag tag={t} size="sm" />)}
+    </div>
 
     <div class="prose" set:html={html} />
 
@@ -63,6 +68,8 @@ function etichettaFonte(f: Fonte): string {
         </section>
       )
     }
+
+    <ShareButtons url={urlAssoluto} title={a.argomento} />
   </article>
 
   <style>
@@ -76,6 +83,13 @@ function etichettaFonte(f: Fonte): string {
       font-size: 0.85rem;
       margin-top: 1rem;
     }
+    .kind {
+      color: var(--rust);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.7rem;
+    }
     .badge {
       background: #f1e9dd;
       color: var(--rust);
@@ -88,7 +102,13 @@ function etichettaFonte(f: Fonte): string {
       font-size: 2rem;
       line-height: 1.2;
       letter-spacing: -0.02em;
-      margin: 0.3rem 0 1.2rem;
+      margin: 0.3rem 0 0.7rem;
+    }
+    .post-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-bottom: 1.3rem;
     }
     .prose :global(h2) { font-size: 1.4rem; margin: 1.8rem 0 0.6rem; }
     .prose :global(h3) { font-size: 1.15rem; margin: 1.4rem 0 0.5rem; }

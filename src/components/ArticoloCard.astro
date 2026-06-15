@@ -1,0 +1,108 @@
+---
+import {
+  articoloSlug,
+  dataItaliana,
+  estratto,
+  etichettaRubrica,
+  tagsDiArticolo,
+  type Articolo,
+} from '../lib/supabase'
+import Tag from './Tag.astro'
+
+interface Props {
+  a: Articolo
+  featured?: boolean
+}
+const { a, featured = false } = Astro.props
+const tags = tagsDiArticolo(a)
+const rubrica = etichettaRubrica(a)
+const href = `/articolo/${articoloSlug(a)}`
+---
+
+<article class={`card ${featured ? 'featured' : ''}`}>
+  <a href={href}>
+    <div class="meta">
+      <time>{dataItaliana(a.data_sessione)}</time>
+      {rubrica && <span class="kind">{rubrica}</span>}
+      {a.stato !== 'ACTIVE' && <span class="badge">{a.stato}</span>}
+    </div>
+    <h2>{a.argomento}</h2>
+    <p>{estratto(a.testo_markdown, featured ? 240 : 150)}</p>
+    <div class="tags">
+      {tags.slice(0, 3).map((t) => <Tag tag={t} size="sm" />)}
+    </div>
+    <span class="more">Leggi →</span>
+  </a>
+</article>
+
+<style>
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .card:hover {
+    border-color: var(--rust);
+    transform: translateY(-2px);
+  }
+  .card a {
+    display: block;
+    text-decoration: none;
+    padding: 1.1rem 1.2rem;
+  }
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+  .kind {
+    color: var(--rust);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.68rem;
+  }
+  .badge {
+    background: #f1e9dd;
+    color: var(--rust);
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+  .card h2 {
+    line-height: 1.3;
+    margin: 0.4rem 0;
+    letter-spacing: -0.01em;
+  }
+  .card:not(.featured) h2 {
+    font-size: 1.18rem;
+  }
+  .featured h2 {
+    font-size: 1.7rem;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+  .card p {
+    color: var(--muted);
+    margin: 0 0 0.7rem;
+  }
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.7rem;
+  }
+  .more {
+    color: var(--rust);
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .featured {
+    background: linear-gradient(180deg, #fff 0%, #fffaf2 100%);
+    border-color: #ecd9bd;
+  }
+</style>

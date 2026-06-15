@@ -1,39 +1,41 @@
 ---
 import Base from '../layouts/Base.astro'
 import ArticoloCard from '../components/ArticoloCard.astro'
-import { fetchArticoli, isLongForm } from '../lib/supabase'
+import { fetchArticoli, RUBRICHE, rubricaDi, type Articolo } from '../lib/supabase'
 
-const articoli = await fetchArticoli()
+// Una pagina per ogni rubrica con elenco proprio: /longform, /dal-mondo, /storia, /trend.
+export async function getStaticPaths() {
+  const articoli = await fetchArticoli()
+  return RUBRICHE.map((r) => ({
+    params: { rubrica: r.slug },
+    props: { r, articoli: articoli.filter((a) => rubricaDi(a) === r.key) },
+  }))
+}
+
+const { r, articoli } = Astro.props as {
+  r: (typeof RUBRICHE)[number]
+  articoli: Articolo[]
+}
 const inEvidenza = articoli[0]
-// Sotto l'articolo in evidenza, gli ultimi post (i LongForm hanno la loro sezione).
-const ultimi = articoli
-  .filter((a) => inEvidenza && a.id !== inEvidenza.id && !isLongForm(a))
-  .slice(0, 6)
+const altri = articoli.slice(1)
 ---
 
-<Base title="myitalianjob — il lavoro in Italia, spiegato">
+<Base title={`${r.titolo} — myitalianjob`} description={r.descrizione}>
   <section class="hero">
-    <h1>Il lavoro in Italia, spiegato.</h1>
-    <p class="lead">
-      Inchieste, dati e analisi su occupazione, contratti, concorsi pubblici e
-      diritti.
-    </p>
+    <h1>{r.titolo}</h1>
+    <p class="lead">{r.descrizione}</p>
   </section>
 
-  {
-    articoli.length === 0 && (
-      <p class="muted vuoto">Nessun articolo pubblicato al momento.</p>
-    )
-  }
+  {articoli.length === 0 && <p class="muted vuoto">Ancora nessun contenuto in questa sezione.</p>}
 
   {inEvidenza && <ArticoloCard a={inEvidenza} featured />}
 
   {
-    ultimi.length > 0 && (
+    altri.length > 0 && (
       <>
-        <h2 class="sezione">Ultimi articoli</h2>
+        <h2 class="sezione">Altri in {r.label}</h2>
         <ul class="cards">
-          {ultimi.map((a) => (
+          {altri.map((a) => (
             <li>
               <ArticoloCard a={a} />
             </li>
@@ -42,8 +44,6 @@ const ultimi = articoli
       </>
     )
   }
-
-  <p class="tutti"><a href="/post">Vedi tutti i post →</a></p>
 
   <style>
     .hero { padding: 1.5rem 0 0.5rem; }
@@ -70,8 +70,6 @@ const ultimi = articoli
       gap: 1rem;
       grid-template-columns: repeat(2, 1fr);
     }
-    .tutti { margin-top: 1.6rem; }
-    .tutti a { color: var(--rust); font-weight: 600; text-decoration: none; }
     @media (max-width: 560px) {
       .cards { grid-template-columns: 1fr; }
     }

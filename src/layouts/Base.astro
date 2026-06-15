@@ -7,6 +7,19 @@ const {
   title,
   description = 'Inchieste, dati e analisi sul lavoro in Italia. My Italian Job.',
 } = Astro.props
+
+const path = Astro.url.pathname
+function attiva(href: string): boolean {
+  return href === '/' ? path === '/' : path.startsWith(href)
+}
+const voci = [
+  { href: '/post', label: 'Post' },
+  { href: '/longform', label: 'LongForm' },
+  { href: '/dal-mondo', label: 'Dal Mondo' },
+  { href: '/storia', label: 'Storia' },
+  { href: '/trend', label: 'Trend' },
+  { href: '/lavoro', label: 'Lavoro' },
+]
 ---
 
 <!doctype html>
@@ -20,11 +33,19 @@ const {
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="/">My Italian <span class="brand-job">Job</span></a>
+      <a class="brand" href="/" aria-label="myitalianjob — home"
+        ><span class="b-my">my</span><span class="b-it">italian</span><span
+          class="b-job">job</span
+        ></a
+      >
       <nav class="nav">
-        <a href="/">Articoli</a>
-        <a href="/pa">Concorsi PA</a>
-        <a href="/onu">Lavoro ONU</a>
+        {
+          voci.map((v) => (
+            <a href={v.href} class={attiva(v.href) ? 'on' : ''} aria-current={attiva(v.href) ? 'page' : undefined}>
+              {v.label}
+            </a>
+          ))
+        }
       </nav>
     </header>
 
@@ -61,23 +82,35 @@ const {
       .site-header {
         display: flex;
         align-items: center;
-        gap: 1.25rem;
+        flex-wrap: wrap;
+        gap: 0.6rem 1.25rem;
         max-width: var(--maxw);
         margin: 0 auto;
         padding: 1rem 1.25rem;
       }
       .brand {
         text-decoration: none;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-        font-size: 1.6rem;
-        color: var(--ink);
+        font-size: 1.55rem;
+        letter-spacing: -0.03em;
+        line-height: 1;
       }
-      .brand-job { font-style: italic; color: var(--saffron); }
-      .nav { display: flex; gap: 1rem; margin-left: auto; font-size: 0.95rem; }
-      .nav a { text-decoration: none; color: var(--muted); }
+      .b-my { color: var(--ink); font-weight: 800; }
+      .b-it { color: var(--rust); font-weight: 800; }
+      .b-job {
+        color: var(--saffron);
+        font-style: italic;
+        font-weight: 700;
+        font-family: Georgia, 'Times New Roman', serif;
+      }
+      .nav { display: flex; gap: 1.1rem; margin-left: auto; font-size: 0.95rem; }
+      .nav a {
+        text-decoration: none;
+        color: var(--muted);
+        padding-bottom: 2px;
+        border-bottom: 2px solid transparent;
+      }
       .nav a:hover { color: var(--ink); }
-      .nav .soon { opacity: 0.5; }
+      .nav a.on { color: var(--ink); font-weight: 700; border-bottom-color: var(--rust); }
       .site-main { max-width: var(--maxw); margin: 0 auto; padding: 1rem 1.25rem 4rem; }
       .site-footer {
         max-width: var(--maxw);
@@ -89,7 +122,13 @@ const {
       }
       .muted { color: var(--muted); }
       @media (max-width: 560px) {
-        .nav { display: none; }
+        .nav {
+          width: 100%;
+          margin-left: 0;
+          gap: 0.9rem;
+          flex-wrap: wrap;
+          font-size: 0.9rem;
+        }
       }
     </style>
   </body>

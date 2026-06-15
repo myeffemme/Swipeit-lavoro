@@ -1,0 +1,85 @@
+---
+// Pulsanti di condivisione social. URL assoluto costruito a monte e passato qui.
+interface Props {
+  url: string
+  title: string
+}
+const { url, title } = Astro.props
+const u = encodeURIComponent(url)
+const t = encodeURIComponent(title)
+
+const links = [
+  { label: 'X', href: `https://twitter.com/intent/tweet?url=${u}&text=${t}` },
+  { label: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${u}` },
+  { label: 'LinkedIn', href: `https://www.linkedin.com/sharing/share-offsite/?url=${u}` },
+  { label: 'WhatsApp', href: `https://wa.me/?text=${t}%20${u}` },
+]
+---
+
+<div class="share">
+  <span class="share-label">Condividi</span>
+  <div class="share-row">
+    {
+      links.map((l) => (
+        <a class="share-btn" href={l.href} target="_blank" rel="noopener">
+          {l.label}
+        </a>
+      ))
+    }
+    <button class="share-btn copy" data-url={url} type="button">Copia link</button>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.share-btn.copy').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const url = btn.dataset.url ?? location.href
+      try {
+        await navigator.clipboard.writeText(url)
+        const old = btn.textContent
+        btn.textContent = 'Copiato ✓'
+        setTimeout(() => (btn.textContent = old), 1500)
+      } catch {
+        /* clipboard non disponibile */
+      }
+    })
+  })
+</script>
+
+<style>
+  .share {
+    margin-top: 2.5rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1.2rem;
+  }
+  .share-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.6rem;
+  }
+  .share-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .share-btn {
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .share-btn:hover {
+    border-color: var(--rust);
+    color: var(--rust);
+  }
+</style>
